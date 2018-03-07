@@ -1,0 +1,63 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r, message=F}
+library(dplyr)
+head(prof_salary)
+```
+
+```{r}
+library(ggplot2)
+
+missing_pct <- colMeans(is.na(prof_salary))
+df <- data.frame(missing_pct, stringsAsFactors=FALSE)
+df$col <- rownames(df)
+
+ggplot(df, aes(x=col, y=missing_pct, fill = col)) + geom_bar(stat="identity") +
+  scale_y_continuous(labels=scales::percent) + labs(
+    x = "Dataframe Column",
+    y = "Missing Data (%)"
+  )
+```
+
+```{r rank_by_salary}
+library(gridExtra)
+
+df2 <- prof_salary %>%
+  filter(is.na(salary))
+
+df3 <- prof_salary %>%
+  filter(is.na(yrs.service))
+         
+plotRankDist <- function(df, label) {
+  ggplot(df, aes(x=rank, fill=rank)) + 
+  geom_bar(aes(y = (..count..)/sum(..count..)))  +
+  theme(legend.position = "none") +
+  labs(x="Professor Rank", y="Frequency of Position", 
+       title=label) +
+  scale_y_continuous(label=scales::percent)
+}
+
+plotRankDist(prof_salary, "Full Distribution of Professorial Ranks")
+plotRankDist(df2, "Distribution of Professorial Ranks Missing Salary")
+plotRankDist(df3, "Distribution of Professorial Ranks Missing Years Service")
+```
+
+```{r sex_dist}
+df_missing <- prof_salary %>%
+  group_by(sex) %>%
+  summarize(`Missing Salary Percentage` = mean(is.na(salary)),
+            `Missing Years Service Percentage` = mean(is.na(yrs.service)))
+
+df_missing
+```
+
+```{r}
+
+```
