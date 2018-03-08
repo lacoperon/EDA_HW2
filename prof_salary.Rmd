@@ -1,17 +1,23 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "EDA Homework 2"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 ---
+*Elliot Williams*
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+## Working with Missing Data
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+### Load the Data
 
 ```{r, message=F}
 library(dplyr)
+load("prof_salary.Rdata")
 head(prof_salary)
 ```
 
+### What percentage of the data is missing for each variable?
 ```{r}
 library(ggplot2)
 
@@ -26,7 +32,11 @@ ggplot(df, aes(x=col, y=missing_pct, fill = col)) + geom_bar(stat="identity") +
   )
 ```
 
-```{r rank_by_salary}
+### What are the patterns of missing data?
+
+As we can see, full professors are by far the most likely to not fill out the years of 
+service and salary fields.
+```{r rank_by_salary, message=F}
 library(gridExtra)
 
 df2 <- prof_salary %>%
@@ -49,6 +59,8 @@ plotRankDist(df2, "Distribution of Professorial Ranks Missing Salary")
 plotRankDist(df3, "Distribution of Professorial Ranks Missing Years Service")
 ```
 
+Additionally, we can see that all of the professors who didn't fill out both of
+those fields were male.
 ```{r sex_dist}
 df_missing <- prof_salary %>%
   group_by(sex) %>%
@@ -58,6 +70,89 @@ df_missing <- prof_salary %>%
 df_missing
 ```
 
+And, we can see that the professors who don't fill out the salary and years of 
+service data usually have a significantly higher amount time since their PhD than
+professors in the dataset overall.
 ```{r}
+mean(prof_salary$yrs.since.phd)
+mean(df2$yrs.since.phd)
+mean(df3$yrs.since.phd)
+```
 
+### Linear Regression
+
+```{r}
+# For Listwise Deletion
+prof_salary.listwise_del <- prof_salary %>%
+  filter(is.na(salary) != TRUE, is.na(yrs.service) != TRUE)
+model.listwise_del <- lm(salary ~ ., prof_salary.listwise_del)
+summary(model.listwise_del)
+```
+
+```{r, message=F}
+# For kNN imputation
+
+library(VIM)
+
+prof_salary.knn <- kNN(prof_salary, imp_var = F)
+model.knn <- lm(salary ~ ., prof_salary.knn)
+summary(model.knn)
+```
+
+```{r, message=F}
+# For missForest imputation
+
+library(missForest)
+
+prof_salary.missForest <- missForest(prof_salary)$ximp
+model.missForest <- lm(salary ~ ., prof_salary.missForest)
+summary(model.missForest)
+```
+
+So, we can see that the model that performs best (according to r-squared value 
+being closest to the actual model) is the model that uses kNN imputation.
+
+I chose to use r-squared as a metric for imputation selection because the
+statistically significant variables for each of the models were the same.
+
+## Part II: Basic Linear Algebra
+
+**Question 10:**
+A is a 2x2 matrix. C is a 3x2 matrix. X is a 2x1 vector. 
+
+**Question 11+:**
+
+```{r}
+a <- matrix(c(2,2,1,2), ncol=2, nrow=2)
+b <- matrix(c(4,0,0,8), ncol=2, nrow=2)
+c <- matrix(c(2, 3,4,1,1,1), ncol=2, nrow=3)
+d <- matrix(c(1, -1, -1/2, 1), ncol=2, nrow=2)
+x <- matrix(c(1,2), ncol=1, nrow=2)
+
+a + b
+b + a
+a %*% x
+# b %*% c --> dimension mismatch, so impossible
+c %*% b
+
+# inverse of a
+solve(a) #so yes, d is the inverse of a
+# transpose of c
+t(c)
+
+# Recall that asymmetric matrix is equal to its transpose
+b == t(b) # --> so, b is symmetric
+
+# Principal Diagonal of B
+diag(b)
+
+# Trace of B
+sum(diag(b))
+```
+
+```{r}
+# If A*E = B, A^-1 * A * E = A^-1 * B = E
+# the `solve` function does this for us
+e <- solve(a, b)
+e
 ```
